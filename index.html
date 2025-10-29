@@ -1,24 +1,274 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Judges Randomizer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge Randomizer</title>
+<style>
+body {
+  font-family: 'Poppins', sans-serif;
+  background: #f4f6fa;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 0;
+  padding: 20px;
+}
+h1 {
+  color: #1a73e8;
+}
+.container {
+  background: white;
+  border-radius: 15px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  padding: 25px;
+  width: 95%;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+label {
+  font-weight: bold;
+}
+textarea, input[type="text"], input[type="number"], select {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0 15px 0;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+button {
+  background-color: #1a73e8;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: 0.2s;
+}
+button:hover { background-color: #155fc2; }
+.controls {
+  margin-bottom: 20px;
+}
+.results {
+  margin-top: 25px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 20px;
+  width: 100%;
+}
+.column {
+  flex: 1;
+  min-width: 250px;
+}
+.column h3 {
+  text-align: center;
+  border-bottom: 2px solid #1a73e8;
+  padding-bottom: 5px;
+}
+.list {
+  background: #f9f9f9;
+  border-radius: 10px;
+  padding: 10px;
+  min-height: 200px;
+  transition: all 0.3s ease;
+}
+.list div {
+  background: #e8f0fe;
+  margin: 5px 0;
+  padding: 6px 10px;
+  border-radius: 5px;
+  transition: background 0.3s, transform 0.3s;
+}
+.list div.active {
+  background: #c6dafc;
+  font-weight: bold;
+  transform: scale(1.05);
+}
+.panelA div { background-color: #c6dafc; }
+.panelB div { background-color: #d2f4c6; }
+.break div { background-color: #ffd7a8; }
+.current-countdown { float: right; font-weight: bold; color: #555; }
+#permanentBox {
+  width: 90%;
+  background:#ffe;
+  border:2px solid #1a73e8;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:20px;
+  display:flex;
+  flex-wrap:wrap;
+  justify-content: space-around;
+  gap:10px;
+}
+#permanentBox input { width: 180px; }
+</style>
 </head>
 <body>
-  <h1>Judges Randomizer</h1>
-  <input id="names" placeholder="Enter judge names, comma separated" style="width:300px;">
-  <button onclick="pick()">Pick Judge</button>
-  <p id="result"></p>
-  <script>
-    function pick() {
-      let names = document.getElementById('names').value.split(',').map(n => n.trim()).filter(Boolean);
-      if (names.length === 0) {
-        document.getElementById('result').textContent = "Please enter at least one judge name.";
-        return;
-      }
-      let winner = names[Math.floor(Math.random() * names.length)];
-      document.getElementById('result').textContent = "Selected Judge: " + winner;
+
+<h1>Judge Randomizer</h1>
+	<div style="margin: 30px 0; text-align: center;">
+  <img 
+    src="https://bulacro.com/wp-content/uploads/2022/04/cropped-cropped-logo.png" 
+    alt="Logo" 
+    style="max-width:300px; height:auto;">
+</div>
+<div class="container">
+
+  <div class="controls">
+    <label>Number of Panels:</label>
+    <select id="panelSelect" onchange="togglePanelB()">
+      <option value="1">Panel A only</option>
+      <option value="2">Panel A + Panel B</option>
+    </select>
+
+    <label>All Judges (one per line):</label>
+    <textarea id="judgesInput" placeholder="Judge 1&#10;Judge 2&#10;Judge 3"></textarea>
+
+    <button onclick="startShuffle()">Start Shuffle</button>
+    <button onclick="stopShuffle()" style="background:#ff6b6b;">Stop</button>
+    <button onclick="resetAll()" style="background:#555;">Reset</button>
+  </div>
+
+  <div id="permanentBox">
+    <input type="text" id="genJudge" placeholder="General Judge (independent)">
+    <input type="text" id="cjp1" placeholder="CJP1">
+    <input type="text" id="dj1" placeholder="DJ1">
+    <input type="text" id="dj2" placeholder="DJ2">
+    <div id="panelBPerms" style="display:flex;gap:10px;">
+      <input type="text" id="cjp2" placeholder="CJP2">
+      <input type="text" id="dj3" placeholder="DJ3">
+      <input type="text" id="dj4" placeholder="DJ4">
+    </div>
+  </div>
+
+  <div class="results">
+    <div class="column">
+      <h3>Panel A</h3>
+      <div id="panelAList" class="list panelA"></div>
+    </div>
+    <div class="column" id="panelBColumn" style="display:none;">
+      <h3>Panel B</h3>
+      <div id="panelBList" class="list panelB"></div>
+    </div>
+    <div class="column">
+      <h3>Break Judges</h3>
+      <div id="breakList" class="list break"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const PASSWORD = "1234";
+const panelAPositions = ["E1","E2","E3","E4","A1","A2","A3","A4"];
+const panelBPositions = ["E1","E2","E3","E4","A1","A2","A3","A4"];
+let stopFlag = false;
+
+function togglePanelB() {
+  const panelB = document.getElementById("panelBColumn");
+  const panelBPerms = document.getElementById("panelBPerms");
+  if(document.getElementById("panelSelect").value==="2") {
+    panelB.style.display="block";
+    panelBPerms.style.display="flex";
+  } else {
+    panelB.style.display="none";
+    panelBPerms.style.display="none";
+  }
+}
+
+function resetAll(){
+  stopFlag = true;
+  document.getElementById("panelAList").innerHTML="";
+  document.getElementById("panelBList").innerHTML="";
+  document.getElementById("breakList").innerHTML="";
+}
+
+function stopShuffle(){
+  stopFlag = true;
+}
+
+async function startShuffle() {
+  stopFlag = false;
+  const pwd = prompt("Enter password:");
+  if(pwd!==PASSWORD){ alert("❌ Wrong password!"); return; }
+
+  const allJudges = document.getElementById("judgesInput").value.split(/\n/).map(j=>j.trim()).filter(j=>j);
+
+  const genJudge = document.getElementById("genJudge").value.trim();
+  const cjp1 = document.getElementById("cjp1").value.trim();
+  const dj1 = document.getElementById("dj1").value.trim();
+  const dj2 = document.getElementById("dj2").value.trim();
+
+  const panelAList = document.getElementById("panelAList");
+  const panelBList = document.getElementById("panelBList");
+  const breakList = document.getElementById("breakList");
+
+  panelAList.innerHTML=""; panelBList.innerHTML=""; breakList.innerHTML="";
+
+  function shuffle(array) { return array.sort(() => Math.random() - 0.5); }
+
+  // PANEL A ASSIGNMENT
+  let availableA = shuffle([...allJudges]);
+  let panelAAssigned = availableA.slice(0, panelAPositions.length);
+  let leftovers = availableA.slice(panelAPositions.length);
+  for(let i=0;i<panelAAssigned.length;i++){
+    const div = document.createElement("div");
+    div.innerHTML = panelAPositions[i]+": "+panelAAssigned[i]+" <span class='current-countdown'></span>";
+    panelAList.appendChild(div);
+    await revealCountdown(div);
+    if(stopFlag) return;
+  }
+
+  // PANEL B IF SELECTED
+  if(document.getElementById("panelSelect").value==="2"){
+    const cjp2 = document.getElementById("cjp2").value.trim();
+    const dj3 = document.getElementById("dj3").value.trim();
+    const dj4 = document.getElementById("dj4").value.trim();
+
+    let availableB = shuffle([...leftovers]);
+    let panelBAssigned = availableB.slice(0, panelBPositions.length);
+    leftovers = availableB.slice(panelBPositions.length);
+
+    for(let i=0;i<panelBAssigned.length;i++){
+      const div = document.createElement("div");
+      div.innerHTML = panelBPositions[i]+": "+panelBAssigned[i]+" <span class='current-countdown'></span>";
+      panelBList.appendChild(div);
+      await revealCountdown(div);
+      if(stopFlag) return;
     }
-  </script>
+  }
+
+  // LEFTOVERS TO BREAK JUDGES
+  leftovers.forEach(j=>{if(j){const div=document.createElement("div"); div.textContent=j; breakList.appendChild(div);}});
+
+  // GENERAL JUDGE
+  if(genJudge){
+    const div = document.createElement("div");
+    div.style.fontWeight="bold";
+    div.textContent = "General Judge: "+genJudge;
+    breakList.prepend(div);
+  }
+
+  alert("✅ Shuffle complete!");
+}
+
+async function revealCountdown(div){
+  const countdownSpan = div.querySelector(".current-countdown");
+  for(let sec=5; sec>0; sec--){
+    if(stopFlag) break;
+    if(countdownSpan) countdownSpan.textContent = `(${sec}s)`;
+    await new Promise(r=>setTimeout(r,1000));
+  }
+  if(countdownSpan) countdownSpan.textContent="";
+} 
+</script>
+
 </body>
 </html>

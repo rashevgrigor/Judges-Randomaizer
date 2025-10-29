@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Judges Randomizer</title>
+</head>
+<body>
+  <h1>Judges Randomizer</h1>
+  <input id="names" placeholder="Enter judge names, comma separated" style="width:300px;">
+  <button onclick="pick()">Pick Judge</button>
+  <p id="result"></p>
+  <script>
+    function pick() {
+      let names = document.getElementById('names').value.split(',').map(n => n.trim()).filter(Boolean);
+      if (names.length === 0) {
+        document.getElementById('result').textContent = "Please enter at least one judge name.";
+        return;
+      }
+      let winner = names[Math.floor(Math.random() * names.length)];
+      document.getElementById('result').textContent = "Selected Judge: " + winner;
+    }
+  </script>
+</body>
+</html>
